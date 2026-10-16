@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111a22">
+  <title>Little Wonders · A world in three dimensions</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <canvas id="world" tabindex="0" aria-label="A rotatable 3D playground with 48 little people. Choose a mystery shape and click the stage to place it. Drag empty space to orbit."></canvas>
+  <header>
+    <div class="wordmark">little wonders<span>A WORLD IN THREE DIMENSIONS</span></div>
+    <div class="header-actions">
+      <button id="help" aria-label="Show instructions" aria-expanded="false" title="How to play">?</button>
+      <button id="pause" aria-pressed="false" aria-label="Pause animation" title="Pause · Space">Ⅱ</button>
+    </div>
+  </header>
+  <div class="world-note"><span class="live-dot"></span><span id="population">48 small lives. Endless possibilities.</span></div>
+  <aside class="drawing panel" aria-label="Building tools">
+    <button data-tool="move" class="active" aria-pressed="true" aria-label="Move shapes or orbit (V)" title="Move / orbit · V">↖</button>
+    <button data-tool="line" aria-pressed="false" aria-label="Draw a path (L)" title="Draw a path · L">╱</button>
+    <button data-tool="ladder" aria-pressed="false" aria-label="Draw a ladder to the selected height (H)" title="Draw a ladder · H">☷</button>
+    <button data-tool="spring" aria-pressed="false" aria-label="Draw a bouncing path (B)" title="Draw a bouncing path · B">⌁</button>
+    <div class="rule"></div>
+    <div class="height-control"><button id="height-up" aria-label="Raise building height" title="Raise building height · ]">⌃</button><output id="height" aria-live="polite" title="Building height">0 m</output><button id="height-down" aria-label="Lower building height" title="Lower building height · [">⌄</button></div>
+    <div class="rule"></div>
+    <button id="undo" aria-label="Undo last edit" title="Undo · Ctrl / ⌘ Z">↶</button>
+    <button id="clear" aria-label="Reset the world" title="Reset world">⟳</button>
+  </aside>
+  <section class="camera panel" aria-label="3D camera controls">
+    <button id="rotate-left" aria-label="Rotate view left by 45 degrees" title="Rotate left · ←">↶</button>
+    <button id="orbit" aria-label="Automatically rotate the 3D world" aria-pressed="false" title="Auto rotate · R"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="m14 4 7 4v9l-7 4-7-4V8Z M7 8l7 4 7-4 M14 12v9 M4 18C-2 11 5 4 11 3 M3 18l1-5m-1 5 5-1 M24 10c6 7-1 14-7 15m8-15-1 5m1-5-5 1"/></svg></button>
+    <button id="rotate-right" aria-label="Rotate view right by 45 degrees" title="Rotate right · →">↷</button>
+    <div class="vertical-rule"></div>
+    <button id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+    <button id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+    <button id="home" aria-label="Reset camera view" title="Reset camera">⌂</button>
+  </section>
+  <section class="dock" aria-label="Mystery shapes">
+    <p id="hint">A little curiosity goes a long way.</p>
+    <div class="shapes panel">
+      <button class="shape" data-shape="0" aria-label="Circle, 0 of 6 placed" aria-pressed="false" title="Circle · 1"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="13"/></svg><span class="slots" aria-hidden="true"></span></button>
+      <button class="shape" data-shape="1" aria-label="Triangle, 0 of 6 placed" aria-pressed="false" title="Triangle · 2"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 9 40 36 8 36Z"/></svg><span class="slots" aria-hidden="true"></span></button>
+      <button class="shape" data-shape="2" aria-label="Diamond, 0 of 6 placed" aria-pressed="false" title="Diamond · 3"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m24 7 14 17-14 17L10 24Z"/></svg><span class="slots" aria-hidden="true"></span></button>
+      <button class="shape" data-shape="3" aria-label="Square, 0 of 6 placed" aria-pressed="false" title="Square · 4"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="12" width="24" height="24" rx="2"/></svg><span class="slots" aria-hidden="true"></span></button>
+      <button class="shape" data-shape="4" aria-label="Hexagon, 0 of 6 placed" aria-pressed="false" title="Hexagon · 5"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m16 10 16 0 8 14-8 14H16L8 24Z"/></svg><span class="slots" aria-hidden="true"></span></button>
+      <button class="shape" data-shape="5" aria-label="Crescent, 0 of 6 placed" aria-pressed="false" title="Crescent · 6"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M30 10a15 15 0 1 0 0 28 17 17 0 0 1 0-28Z"/></svg><span class="slots" aria-hidden="true"></span></button>
+    </div>
+    <span class="dock-caption">SIX SHAPES. A FEW SECRETS.</span>
+  </section>
+  <section id="instructions" class="panel" hidden aria-label="How to play">
+    <h1>Make room for wonder.</h1>
+    <p>Choose a shape, then tap the stage. Give it a moment: each one has a different 3D discovery. You have six of each.</p>
+    <p>Use the arrow to move a shape. Drag empty space to orbit, or use the rotation buttons. Scroll to zoom.</p>
+    <p>Draw paths and springs across the stage. Raise the building height to make elevated paths. Draw a ladder from its lower end to a raised path; it rises to the selected height.</p>
+    <p>Little people give each other space, wait on ladders, and find their own way. Shapes cannot be placed on them.</p>
+    <p class="keys">1–6 shapes · V move · L path · H ladder · B bounce<br>← → rotate · R auto rotate · [ ] height · Space pause<br>Esc cancel · Ctrl / ⌘ Z undo</p>
+    <button id="close-help">Let’s explore <span aria-hidden="true">↗</span></button>
+  </section>
+  <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+  <div id="webgl-error" class="panel" hidden>This little world needs WebGL. Please open it in a browser with hardware acceleration enabled.</div>
+</main>
+<script src="simulation.js"></script>
+<script src="renderer.js"></script>
+<script src="world.js"></script>
+</body>
+</html>
