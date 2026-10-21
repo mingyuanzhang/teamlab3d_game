@@ -20,6 +20,7 @@ Visit http://localhost:8000. Everything is local: no package installation, build
 - Choose Ladder, then drag from its lower end toward a raised path at the selected height. The lower end connects to the highest existing surface below that height; the upper end should meet a path. Choosing Ladder at ground level automatically selects 2.4 metres.
 - Pause freezes people, discovery clocks, and effects. Building and camera controls remain available. Undo reverses edits; reset clears edits and restores the starting paths and population.
 - A gentle original soundtrack starts after your first click, tap, or game key. Every reveal plays its shape's own melody: rain chimes, sparkling fireworks, rising balloon flutes, wooden garden notes, rippling ribbon harp, and orbital bells. Tunes and visual pops enter together on the soundtrack’s eighth-note pulse. Melodies, echoes, and held notes follow its current chord through every change. The speaker button or **M** mutes all audio and remembers your preference. Audio pauses with the game and when the tab is hidden.
+- The **Music** menu offers **Default**, the original soundtrack; **Jazz**, with warm keys, walking bass, brushed percussion, and swing; **Rock**, with electric guitars, driving bass, and a drum backbeat; and **Classical**, with chamber strings, cello, oboe, piano, and harp. Changing themes updates the accompaniment, all six discovery instruments, and rhythmic motion together. Existing and newly placed objects follow the selected chords and groove; pending entrances are rescheduled to its beat. Theme choice is remembered separately from mute, and switching preserves pause and mute.
 - The `?` button opens instructions. Controls have accessible names, tooltips, focus outlines, and status announcements.
 
 Keyboard: **1–6** shapes, **V** move/orbit, **L** path, **H** ladder, **B** bounce, **← / →** rotate, **R** auto rotate, **[ / ]** building height, **Space** pause, **M** sound, **Escape** cancel, **Ctrl/Cmd+Z** undo. Press Enter on a focused tray shape to place a copy in a free spot near the centre.
@@ -35,7 +36,7 @@ People avoid placed shapes, and placement or movement over a person's body is re
 - `simulation.js`: browser-independent movement, collision volumes, inventory, history, and clocks.
 - `renderer.js`: local WebGL mesh renderer, curved petals, twisting ribbon surfaces, lighting, depth buffer, and orbit camera.
 - `world.js`: scene, six 3D effects, placement, tools, and camera input.
-- `audio.js`: original synthesized music and six discovery tunes using Web Audio; no audio assets or dependencies. Browsers without Web Audio can still play silently.
+- `audio.js`: Default, Jazz, Rock, and Classical soundtracks, shared chord and rhythm timing, and six theme-aware discovery tunes using Web Audio; no audio assets or dependencies. Browsers without Web Audio can still play silently.
 - `index.html` and `style.css`: responsive controls and instructions.
 
 ```sh

@@ -12,15 +12,28 @@
   const skins=['#d9b99a','#a87959','#e7cdb4'];
   const levels=[0,2.4,3.8,5.2];
   let selected=null,tool='move',level=0,paused=false,last=0,accumulator=0,gesture=null,pointer=null,effects=[];
-  const soundButton=$('#sound'),sound=new WonderAudio.Soundtrack({onChange:syncSound});
+  const soundButton=$('#sound'),themeSelect=$('#music-theme'),sound=new WonderAudio.Soundtrack({onChange:syncSound});
   function syncSound(){
     soundButton.disabled=!sound.supported;soundButton.setAttribute('aria-pressed',String(sound.muted));
     const label=!sound.supported?'Audio unavailable in this browser':sound.muted?'Unmute sound':'Mute sound';
     soundButton.setAttribute('aria-label',label);soundButton.title=`${label} · M`;
+    themeSelect.disabled=!sound.supported;themeSelect.value=sound.theme;
   }
   function toggleSound(){if(!sound.supported)return;sound.setMuted(!sound.muted);if(sound.supported)status(sound.muted?'Music and discovery tunes muted.':'Music and discovery tunes on.',false);}
-  document.addEventListener('pointerdown',e=>{if(e.isPrimary!==false&&e.button===0&&!soundButton.contains(e.target))sound.unlock();},{capture:true});
-  document.addEventListener('click',e=>{if(!soundButton.contains(e.target))sound.unlock();},{capture:true});
+  function chooseMusicTheme(){
+    if(!sound.setTheme(themeSelect.value)){syncSound();return;}
+    for(const effect of effects){
+      effect.musicBeat=0;
+      if(effect.age<0){
+        const cue=sound.queueDiscovery(effect)||sound.nextEntrance();
+        effect.startsAt=cue?.when;effect.musicBeat=cue?.beat??0;
+        effect.age=cue?Math.min(0,sound.context.currentTime-cue.when):0;
+      }
+    }
+    status(`${WonderAudio.THEMES[sound.theme].name} music. Every discovery follows its chords and groove.`,false);
+  }
+  document.addEventListener('pointerdown',e=>{if(e.isPrimary!==false&&e.button===0&&!soundButton.contains(e.target)&&!themeSelect.contains(e.target))sound.unlock();},{capture:true});
+  document.addEventListener('click',e=>{if(!soundButton.contains(e.target)&&!themeSelect.contains(e.target))sound.unlock();},{capture:true});
   const r=renderer,TAU=Math.PI*2;
   const noise=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
   const status=(text,visible=true)=>{$('#status').textContent=text;if(visible)$('#hint').textContent=text;};
@@ -144,7 +157,9 @@
   function drawEffect(e){
     const t=e.age;if(t<0)return;
     const c=palettes[e.id],grow=1-Math.exp(-t*8)*Math.cos(t*15),seed=e.tokenId*7+e.cycle*53;
-    const beat=t/(sound.beatLength||WonderAudio.BEAT),pulse=.5+.5*Math.cos(beat*TAU);
+    const transport=sound.currentBeat();
+    const beat=e.musicBeat!==undefined&&transport!==null?Math.max(0,transport-e.musicBeat):WonderAudio.straightBeat(t/sound.beatLength,sound.theme);
+    const pulse=.5+.5*Math.cos((transport??beat)*TAU);
     const wobble=Math.sin(t*18)*Math.exp(-t*5)*.16;
     const stretch=[grow*(1+wobble),grow*(1-wobble*.8),grow*(1+wobble*.6)];
     const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
@@ -400,6 +415,7 @@
   $('#undo').addEventListener('click',undo);
   $('#clear').addEventListener('click',()=>{world.reset();effects=[];sound.clearEffects();cancelGesture();selected=null;tool='move';sync();status('A fresh start. Six of each shape, all to discover.');});
   soundButton.addEventListener('click',toggleSound);
+  themeSelect.addEventListener('change',chooseMusicTheme);
   $('#pause').addEventListener('click',pause);$('#rotate-left').addEventListener('click',()=>rotate(-Math.PI/4));$('#rotate-right').addEventListener('click',()=>rotate(Math.PI/4));$('#orbit').addEventListener('click',autoRotate);
   $('#zoom-in').addEventListener('click',()=>zoom(.88));$('#zoom-out').addEventListener('click',()=>zoom(1/.88));$('#home').addEventListener('click',()=>{camera.reset();sync();});
   $('#help').addEventListener('click',()=>help($('#instructions').hidden));$('#close-help').addEventListener('click',()=>help(false));
@@ -426,7 +442,7 @@
       accumulator+=dt;while(accumulator>=1/60){
         world.update(1/60);for(const event of world.drainEvents()){
           const cue=sound.playDiscovery(event),startsAt=cue?.when;
-          effects.push({...event,age:cue?Math.min(0,sound.context.currentTime-startsAt):0,startsAt,life:8.5});
+          effects.push({...event,age:cue?Math.min(0,sound.context.currentTime-startsAt):0,startsAt,musicBeat:cue?.beat,life:8.5});
         }
         for(const effect of effects){
           if(effect.age<0&&effect.startsAt!==undefined)effect.age=sound.context.currentTime-effect.startsAt;

@@ -28,7 +28,7 @@ class Element {
   closest(selector){return selector==='button'&&this.attrs.get('tag')==='button'?this:null;}
   contains(element){return element===this;}
 }
-function boot(width=1440,height=900,{audio=false,muted=false,capture=false}={}){
+function boot(width=1440,height=900,{audio=false,muted=false,capture=false,theme='default'}={}){
   const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),elements=[];
   for(const [,tag,attrs]of html.matchAll(/<(\w+)\b([^>]*)>/g)){const el=new Element(attrs);el.attrs.set('tag',tag);elements.push(el);}
   const document=new Element(),window=new Element();
@@ -51,7 +51,8 @@ function boot(width=1440,height=900,{audio=false,muted=false,capture=false}={}){
       super.mesh(name,position,scale,hex,rotation,glow,opacity);
     }
   }
-  const context=vm.createContext({document,window,console,AudioContext:audio?AudioContext:undefined,localStorage:{getItem:()=>String(muted),setItem(){}},LittleWorld3D:{...simulation,World},Wonder3D:{...graphics,Renderer},requestAnimationFrame:fn=>{scheduled=fn;}});
+  const storage=new Map([['little-wonders-muted',String(muted)],['little-wonders-music-theme',theme]]);
+  const context=vm.createContext({document,window,console,AudioContext:audio?AudioContext:undefined,localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},LittleWorld3D:{...simulation,World},Wonder3D:{...graphics,Renderer},requestAnimationFrame:fn=>{scheduled=fn;}});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../audio.js'),'utf8'),context,{filename:'audio.js'});
   const BaseSoundtrack=context.WonderAudio.Soundtrack;
   context.WonderAudio.Soundtrack=class extends BaseSoundtrack{constructor(options){super(options);sound=this;}};
@@ -61,7 +62,7 @@ function boot(width=1440,height=900,{audio=false,muted=false,capture=false}={}){
   const click=selector=>document.querySelector(selector).dispatch('click');
   const shape=id=>document.querySelectorAll('.shape').find(b=>Number(b.dataset.shape)===id).dispatch('click');
   const tool=kind=>document.querySelectorAll('[data-tool]').find(b=>b.dataset.tool===kind).dispatch('click');
-  return {world,renderer,canvas,gl,document,window,frame,drag,click,shape,tool,sound};
+  return {world,renderer,canvas,gl,document,window,frame,drag,click,shape,tool,sound,storage};
 }
 
 test('the actual application starts and submits all six 3D discoveries',()=>{
@@ -111,6 +112,33 @@ test('saved mute preference and unavailable audio preserve a playable world',()=
   assert.equal(silent.document.querySelector('#sound').disabled,true);
   silent.world.people=[];assert.ok(silent.world.place(0,{x:0,y:0,z:0}));
   for(let i=0;i<7;i++)silent.frame();assert.equal(silent.world.tokens[0].cycle,1);
+});
+
+for(const theme of ['jazz','rock','classical'])test(`the ${theme} selector updates all six existing objects and future placements together`,()=>{
+  const a=boot(1440,900,{audio:true});a.frame();a.world.people=[];a.document.dispatch('pointerdown',{target:a.canvas});
+  for(let id=0;id<6;id++)a.world.place(id,{x:-8+id*3,y:0,z:0});
+  for(let i=0;i<7;i++)a.frame();
+  const oldVoices=[...a.sound.voices.keys()],oldMusic=a.sound.music,select=a.document.querySelector('#music-theme');
+  select.value=theme;select.dispatch('change');
+  assert.equal(a.sound.theme,theme);assert.equal(select.value,theme);assert.equal(oldMusic.stopped,true);
+  assert.ok(oldVoices.every(source=>source.stopped));assert.equal(a.sound.voices.size,6,'Pending entrances are rescheduled in the new theme');
+  assert.ok([...a.sound.buffers.keys()].every(key=>key.startsWith(`${theme}:`)));
+  assert.equal(a.storage.get('little-wonders-music-theme'),theme);
+  a.sound.context.currentTime=a.sound.startedAt+.15;a.frame();
+  for(const token of a.world.tokens)token.timer=.01;
+  a.frame();assert.ok([...a.sound.buffers.keys()].every(key=>key.startsWith(`${theme}:`)));
+  a.world.place(0,{x:0,y:0,z:5});for(let i=0;i<7;i++)a.frame();
+  assert.equal(a.world.tokens.length,7);assert.ok([...a.sound.buffers.keys()].every(key=>key.startsWith(`${theme}:`)));
+  a.click('#pause');select.value='default';select.dispatch('change');assert.equal(a.sound.context.state,'suspended');
+  a.click('#pause');assert.equal(a.sound.theme,'default');assert.equal(a.sound.context.state,'running');
+});
+
+for(const theme of ['jazz','rock','classical'])test(`saved ${theme} selection loads quietly and the selector keeps keyboard focus out of the game`,()=>{
+  const a=boot(390,844,{audio:true,muted:true,theme}),select=a.document.querySelector('#music-theme');
+  assert.equal(select.value,theme);assert.equal(a.sound.context,null);
+  const yaw=a.renderer.camera.targetYaw;a.window.dispatch('keydown',{target:select,key:'ArrowRight'});
+  assert.equal(a.renderer.camera.targetYaw,yaw);assert.equal(a.sound.context,null);
+  select.value='default';select.dispatch('change');assert.equal(a.sound.muted,true);assert.equal(a.sound.context,null);
 });
 
 test('discoveries spring past full size, settle, and dissolve without contracting',()=>{

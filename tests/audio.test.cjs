@@ -4,7 +4,13 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const {createHash}=require('node:crypto');
 const {AudioContext}=require('./helpers/audio.cjs');
-const {makeMusic,makeTune,discoveryScore,CHORDS}=require('../audio.js');
+const {makeMusic,makeTune,discoveryScore,THEMES,grooveBeat,straightBeat}=require('../audio.js');
+const defaultHashes={music:'ccf9c142b7708c1d946b2cc6c2c6b54aeef080e28f4ba5f423b4b4e94617e7ec',tunes:[
+  '14a63b7abd4b265382b3c1f9b02b0fe85ad24739e2b2e0b86a743b0e40a66e4f','f6bf7633608ad63311b82d5d86ac8784fff2e538cb8c29ff98b5c459d8ecf44b',
+  'a4ebdada3efa12aeff22a8769b028ff9901670d42b2e9b1fd324df2cbcade626','6d57817404a9e4968794b79d38a3712078c566241fb67b7b78787d36760c131e',
+  'd33204d4e4ed2cec1f9661d210f1da1e45c3b24f6d7c2f8b79d810126f652c0e','525af54f39ac62a03bf6e3f9bc3b1038bcd4603010819263ac84ecac0e5c24b5'
+]};
+function hash(buffer){const h=createHash('sha256');for(let i=0;i<2;i++)h.update(Buffer.from(buffer.getChannelData(i).buffer));return h.digest('hex');}
 
 function samples(buffer){
   let peak=0,power=0;
@@ -18,6 +24,7 @@ function samples(buffer){
 
 test('music is audible stereo PCM with headroom and a continuous loop boundary',()=>{
   const buffer=makeMusic(new AudioContext()),{peak,rms}=samples(buffer);
+  assert.equal(hash(buffer),defaultHashes.music,'The original soundtrack remains the Default theme');
   assert.ok(buffer.duration>20);assert.ok(buffer.duration<30);
   assert.ok(peak<.6&&peak>.1);assert.ok(rms>.015);
   assert.notDeepEqual(buffer.getChannelData(0),buffer.getChannelData(1));
@@ -31,6 +38,7 @@ test('all six discovery tunes are distinct, audible, and fade to silence',()=>{
   const hashes=new Set();
   for(let id=0;id<6;id++){
     const buffer=makeTune(new AudioContext(),id),{peak,rms}=samples(buffer);
+    assert.equal(hash(buffer),defaultHashes.tunes[id],'The original discovery melody is preserved');
     assert.ok(peak<.8&&peak>.1);assert.ok(rms>.02);
     for(let channel=0;channel<2;channel++){
       const data=buffer.getChannelData(channel);
@@ -42,14 +50,40 @@ test('all six discovery tunes are distinct, audible, and fade to silence',()=>{
 });
 
 test('all melodies and echoes follow the active chord through every bar and loop boundary',()=>{
-  for(let id=0;id<6;id++)for(const start of [0,.5,3.5,4,7.5,8,11.5,12,15.5,31.5,32.5]){
-    for(const n of discoveryScore(id,start)){
-      const absolute=start+n.beat,bar=Math.floor((absolute+1e-8)/4),chord=CHORDS[bar%4];
+  for(const theme of Object.keys(THEMES))for(let id=0;id<6;id++)for(const start of Array.from({length:68},(_,i)=>i*.5)){
+    for(const n of discoveryScore(id,start,theme)){
+      const absolute=start+n.beat,bar=Math.floor((absolute+1e-8)/4),chords=THEMES[theme].chords,chord=chords[bar%chords.length];
       assert.ok(chord.some(midi=>midi%12===n.midi%12),`Shape ${id}, beat ${absolute}: pitch ${n.midi} must belong to the active chord`);
       assert.ok(absolute+n.duration<=(bar+1)*4+1e-8,'Sustains retune at chord changes');
       assert.equal(n.beat*4,Math.round(n.beat*4),'Each note and echo follows the sixteenth-note grid');
     }
   }
+});
+
+for(const theme of ['jazz','rock','classical'])test(`${THEMES[theme].name} has audible stereo music and six distinct tunes that end cleanly`,()=>{
+  const context=new AudioContext(),music=makeMusic(context,theme),levels=samples(music),hashes=new Set();
+  assert.notEqual(hash(music),defaultHashes.music);assert.ok(levels.rms>.015&&levels.peak<.8);
+  assert.ok(Math.abs(music.duration-32*60/THEMES[theme].bpm)<1/music.sampleRate);
+  assert.notDeepEqual(music.getChannelData(0),music.getChannelData(1));
+  for(let channel=0;channel<2;channel++){
+    const data=music.getChannelData(channel);assert.ok(Math.abs(data[0]-data.at(-1))<.025);
+  }
+  for(let id=0;id<6;id++){
+    const buffer=makeTune(context,id,3.5,undefined,theme),{peak,rms}=samples(buffer);
+    assert.ok(peak<.8&&rms>.015);assert.notEqual(hash(buffer),defaultHashes.tunes[id]);
+    for(let channel=0;channel<2;channel++)assert.ok(buffer.getChannelData(channel).slice(-240).every(value=>Math.abs(value)<.0001));
+    hashes.add(hash(buffer));
+  }
+  assert.equal(hashes.size,6);
+});
+
+test('the jazz groove swings every object on the same subdivision grid',()=>{
+  for(const beat of [-.25,0,.25,.5,.75,1,3.5,31.5,32.5]){
+    assert.ok(Math.abs(straightBeat(grooveBeat(beat,'jazz'),'jazz')-beat)<1e-10);
+    assert.equal(grooveBeat(beat,'default'),beat);
+  }
+  assert.equal(grooveBeat(.5,'jazz'),.62);assert.equal(grooveBeat(.25,'jazz'),.31);
+  assert.equal(grooveBeat(1.5,'jazz'),1.62);
 });
 
 function load(extra={}){
@@ -71,15 +105,51 @@ test('crowded discoveries stay bounded, reuse buffers, and disconnect ended sour
 
 test('reveal scheduling stays on the music clock after pauses and complete music loops',()=>{
   const {Soundtrack}=load(),sound=new Soundtrack();sound.unlock();
-  for(const time of [.12,2.7,11.31,22.93,46.71]){
-    sound.context.currentTime=time;
+  for(const theme of Object.keys(THEMES)){
+    sound.setTheme(theme);const origin=sound.startedAt;
+    for(const elapsed of [.12,2.7,11.31,22.93,46.71]){
+    const time=origin+elapsed;sound.context.currentTime=time;
     const cue=sound.playDiscovery({id:2});
-    const beat=(cue.when-sound.startedAt)/sound.beatLength;
+    const beat=straightBeat((cue.when-sound.startedAt)/sound.beatLength,theme);
     assert.ok(Math.abs(beat*2-Math.round(beat*2))<1e-9);
-    assert.ok(cue.when>=time+.008&&cue.when-time<sound.beatLength/2+.041);
+    assert.ok(cue.when>=time+.008&&cue.when-time<sound.beatLength*THEMES[theme].swing+.041);
     sound.setPaused(true);sound.setPaused(false);
     assert.equal(sound.music.when,sound.startedAt,'Pausing preserves the music origin');
+    }
   }
+});
+
+test('theme switches retire old music and cues, persist preferences, and respect mute and pause',()=>{
+  const saved=new Map(),localStorage={getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value)};
+  const {Soundtrack}=load({localStorage}),sound=new Soundtrack();
+  assert.equal(sound.theme,'default');sound.unlock();sound.playDiscovery({id:0});
+  const music=sound.music,voice=sound.voices.keys().next().value;
+  sound.setPaused(true);assert.equal(sound.setTheme('jazz'),true);
+  assert.equal(sound.context.state,'suspended');assert.equal(music.stopped,true);assert.equal(voice.stopped,true);
+  assert.equal(sound.buffers.size,0);assert.ok(Math.abs(sound.beatLength-60/104)<.00001);
+  assert.equal(new Soundtrack().theme,'jazz','The next visit remembers the selected theme');
+  const queued=sound.queueDiscovery({id:3});assert.ok(queued.when>=sound.startedAt);assert.equal(queued.theme,'jazz');
+  sound.setMuted(true);sound.setTheme('default');assert.equal(sound.muted,true);assert.equal(sound.context.state,'suspended');
+  assert.equal(sound.queueDiscovery({id:0}),undefined);assert.equal(sound.setTheme('__proto__'),false);
+  const silent=new Soundtrack();assert.equal(silent.muted,true);silent.setTheme('jazz');assert.equal(silent.context,null);
+});
+
+test('a failed theme buffer allocation preserves the playing theme',()=>{
+  const {Soundtrack}=load(),sound=new Soundtrack();sound.unlock();const music=sound.music;
+  sound.context.createBuffer=()=>{throw Error('Allocation failed');};
+  assert.equal(sound.setTheme('jazz'),false);assert.equal(sound.theme,'default');assert.equal(sound.music,music);assert.equal(music.stopped,false);
+});
+
+test('slow cue generation advances to a future swung beat with the correct chord',()=>{
+  const {Soundtrack}=load(),sound=new Soundtrack();sound.setTheme('jazz');
+  const context=sound.context,create=context.createBuffer.bind(context);
+  context.currentTime=sound.startedAt+3.4*sound.beatLength;
+  context.createBuffer=(...args)=>{context.currentTime+=.6;return create(...args);};
+  const cue=sound.playDiscovery({id:0});
+  assert.ok(cue.when>context.currentTime);assert.equal(cue.theme,'jazz');
+  assert.ok(Math.abs(straightBeat((cue.when-sound.startedAt)/sound.beatLength,'jazz')-cue.beat)<1e-9);
+  const key=`jazz:0:${Math.round(cue.beat*2)%64}`;
+  assert.equal([...sound.voices.keys()][0].buffer,sound.buffers.get(key));
 });
 
 test('storage restrictions and rejected browser resumes do not break play',async()=>{
