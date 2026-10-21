@@ -44,3 +44,5 @@ node --test team_lab3d/tests/*.test.cjs
 ```
 
 Run that command from the parent directory (or `node --test tests/*.test.cjs` here). Tests cover collision-free spawning, approaching walkers, swept collisions, falling bodies, ladder queues, gravity, elevated supports, springs, shape avoidance, inventory, repeating discoveries, move/undo, invalid inputs, camera picking at desktop and phone dimensions, and ten simulated minutes with two deterministic populations. Audio checks cover audible, distinct waveforms, loop continuity, chord changes, beat synchronization, overlapping tunes, mute persistence, pause and visibility, and browser or storage restrictions. A separate DOM/WebGL harness checks application startup, geometry submission, input, and all six effects, including pop overshoot, settling, and full-size dissolves; it does not replace visual testing in a real browser.
+
+For GitHub Pages releases, update each changed CSS or JavaScript file's `?v=` value in `index.html` to the first 12 characters of its SHA-256 hash, so returning visitors load the matching styles and scripts.
