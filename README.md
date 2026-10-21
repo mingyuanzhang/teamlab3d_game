@@ -1,6 +1,6 @@
 # Little Wonders · 3D
 
-A separate, dependency-free 3D version of `team_lab`. Forty-eight little people explore a miniature stage, climb ladders, fall, and bounce. Six mystery shapes reveal repeating 3D rain clouds, fireworks, balloons, gardens, ribbons, and orbiting worlds. Up to six copies of each shape have independent clocks.
+A separate, dependency-free 3D version of `team_lab`. Forty-eight little people explore a miniature stage, climb ladders, fall, and bounce. Six small mystery shapes reveal repeating kinetic sculptures: rainbow showers, chrysanthemum fireworks, floating balloons, paper-flower gardens, silk ribbons, and miniature planetariums. Up to six copies of each shape have independent clocks.
 
 Open `index.html` in a modern browser with WebGL, or serve this directory:
 
@@ -13,15 +13,16 @@ Visit http://localhost:8000. Everything is local: no package installation, build
 
 ## Play
 
-- Choose a shape, then tap the stage, or drag a shape from the tray. Each copy reveals its discovery after a short delay and repeats automatically. The six dots show used copies.
+- Choose a shape, then tap the stage, or drag a shape from the tray. Each copy reveals its discovery after a short delay and repeats automatically. The shapes stay small; the people and discoveries carry the scene. Discoveries arrive with a springy wobble, have small variations between reveals, and dissolve into drifting flecks at the end. The six dots show used copies.
 - Choose the arrow to drag existing shapes. Moving a shape moves its next discovery; already released discoveries continue at their original location.
 - Drag empty space with the arrow tool to orbit the world. The bottom-left camera controls rotate in 45° steps, toggle automatic rotation, zoom, and restore the original view. Scroll also zooms.
 - Use Path or Bounce, then drag across the stage. The height arrows set the horizontal construction plane: 0, 2.4, 3.8, or 5.2 metres. Shapes can also be placed at these heights.
 - Choose Ladder, then drag from its lower end toward a raised path at the selected height. The lower end connects to the highest existing surface below that height; the upper end should meet a path. Choosing Ladder at ground level automatically selects 2.4 metres.
 - Pause freezes people, discovery clocks, and effects. Building and camera controls remain available. Undo reverses edits; reset clears edits and restores the starting paths and population.
+- A gentle original soundtrack starts after your first click, tap, or game key. Every reveal plays its shape's own melody: rain chimes, sparkling fireworks, rising balloon flutes, wooden garden notes, rippling ribbon harp, and orbital bells. Tunes and visual pops enter together on the soundtrack’s eighth-note pulse. Melodies, echoes, and held notes follow its current chord through every change. The speaker button or **M** mutes all audio and remembers your preference. Audio pauses with the game and when the tab is hidden.
 - The `?` button opens instructions. Controls have accessible names, tooltips, focus outlines, and status announcements.
 
-Keyboard: **1–6** shapes, **V** move/orbit, **L** path, **H** ladder, **B** bounce, **← / →** rotate, **R** auto rotate, **[ / ]** building height, **Space** pause, **Escape** cancel, **Ctrl/Cmd+Z** undo. Press Enter on a focused tray shape to place a copy in a free spot near the centre.
+Keyboard: **1–6** shapes, **V** move/orbit, **L** path, **H** ladder, **B** bounce, **← / →** rotate, **R** auto rotate, **[ / ]** building height, **Space** pause, **M** sound, **Escape** cancel, **Ctrl/Cmd+Z** undo. Press Enter on a focused tray shape to place a copy in a free spot near the centre.
 
 ## People and spacing
 
@@ -32,12 +33,13 @@ People avoid placed shapes, and placement or movement over a person's body is re
 ## Files and validation
 
 - `simulation.js`: browser-independent movement, collision volumes, inventory, history, and clocks.
-- `renderer.js`: local WebGL mesh renderer, lighting, depth buffer, and orbit camera.
+- `renderer.js`: local WebGL mesh renderer, curved petals, twisting ribbon surfaces, lighting, depth buffer, and orbit camera.
 - `world.js`: scene, six 3D effects, placement, tools, and camera input.
+- `audio.js`: original synthesized music and six discovery tunes using Web Audio; no audio assets or dependencies. Browsers without Web Audio can still play silently.
 - `index.html` and `style.css`: responsive controls and instructions.
 
 ```sh
 node --test team_lab3d/tests/*.test.cjs
 ```
 
-Run that command from the parent directory (or `node --test tests/*.test.cjs` here). Tests cover collision-free spawning, approaching walkers, swept collisions, falling bodies, ladder queues, gravity, elevated supports, springs, shape avoidance, inventory, repeating discoveries, move/undo, invalid inputs, camera picking at desktop and phone dimensions, and ten simulated minutes with two deterministic populations. A separate DOM/WebGL harness checks application startup, geometry submission, input, and all six effects; it does not replace visual testing in a real browser.
+Run that command from the parent directory (or `node --test tests/*.test.cjs` here). Tests cover collision-free spawning, approaching walkers, swept collisions, falling bodies, ladder queues, gravity, elevated supports, springs, shape avoidance, inventory, repeating discoveries, move/undo, invalid inputs, camera picking at desktop and phone dimensions, and ten simulated minutes with two deterministic populations. Audio checks cover audible, distinct waveforms, loop continuity, chord changes, beat synchronization, overlapping tunes, mute persistence, pause and visibility, and browser or storage restrictions. A separate DOM/WebGL harness checks application startup, geometry submission, input, and all six effects, including pop overshoot, settling, and full-size dissolves; it does not replace visual testing in a real browser.

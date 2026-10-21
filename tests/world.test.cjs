@@ -92,7 +92,8 @@ test('six copies of each shape have independent clocks and 3D positions',()=>{
 
 test('people block both placement and movement, while shapes can share an origin',()=>{
   const w=create();w.people=w.people.slice(0,1);groundPerson(w.people[0],0,0);
-  assert.ok(w.placementBlocked({x:0,y:0,z:0}));assert.ok(w.placementBlocked({x:.8,y:0,z:0}));
+  assert.ok(w.placementBlocked({x:0,y:0,z:0}));assert.ok(w.placementBlocked({x:.7,y:0,z:0}));
+  assert.equal(w.placementBlocked({x:.8,y:0,z:0}),false,'Compact shapes leave space beside a person');
   assert.equal(w.place(0,{x:0,y:0,z:0}),undefined);
   const t=w.place(0,{x:3,y:0,z:0});assert.ok(t);assert.equal(w.move(t.uid,{x:0,y:0,z:0}),undefined);assert.equal(t.x,3);
   assert.ok(w.place(1,{x:3,y:0,z:0}));assert.ok(w.place(2,{x:0,y:2.4,z:0}));

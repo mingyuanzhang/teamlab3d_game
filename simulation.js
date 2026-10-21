@@ -51,7 +51,7 @@
     }
     snapshot(){this.history.push({tokens:this.tokens.map(t=>({...t})),lines:this.lines.map(l=>({...l,a:{...l.a},b:{...l.b}}))});if(this.history.length>50)this.history.shift();}
     validPoint(p){return p&&[p.x,p.y,p.z].every(Number.isFinite)&&Math.abs(p.x)<=11.5&&Math.abs(p.z)<=8.5&&p.y>=0&&p.y<=6;}
-    tokenBody(t){return {x:t.x,y:t.y+.04,z:t.z,radius:.62,height:1.45};}
+    tokenBody(t){return {x:t.x,y:t.y+.025,z:t.z,radius:.41,height:.92,footPadding:.18};}
     placementBlocked(p){return !this.validPoint(p)||this.people.some(person=>overlaps(person,this.tokenBody(p),.06));}
     place(id,p){
       if(!Number.isInteger(id)||id<0||id>5||this.tokens.filter(t=>t.id===id).length>=6||this.placementBlocked(p))return;

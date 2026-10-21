@@ -6,6 +6,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 const simulation=require('../simulation.js');
 const graphics=require('../renderer.js');
+const {AudioContext}=require('./helpers/audio.cjs');
 
 class Element {
   constructor(attrs=''){
@@ -25,8 +26,9 @@ class Element {
   focus(){}
   matches(selector){return selector.split(',').includes(this.attrs.get('tag')||'body');}
   closest(selector){return selector==='button'&&this.attrs.get('tag')==='button'?this:null;}
+  contains(element){return element===this;}
 }
-function boot(width=1440,height=900){
+function boot(width=1440,height=900,{audio=false,muted=false,capture=false}={}){
   const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),elements=[];
   for(const [,tag,attrs]of html.matchAll(/<(\w+)\b([^>]*)>/g)){const el=new Element(attrs);el.attrs.set('tag',tag);elements.push(el);}
   const document=new Element(),window=new Element();
@@ -36,20 +38,30 @@ function boot(width=1440,height=900){
   for(const name of ['createShader','createProgram','createBuffer','getUniformLocation'])gl[name]=()=>({});
   for(const name of ['shaderSource','compileShader','attachShader','linkProgram','bindBuffer','useProgram','enableVertexAttribArray','vertexAttribPointer','enable','depthFunc','clearColor','viewport','clear','uniform3fv','uniform2f'])gl[name]=()=>{};
   gl.getShaderParameter=gl.getProgramParameter=()=>true;gl.getAttribLocation=()=>0;
-  gl.bufferData=(_,data)=>{assert.equal(data.length%10,0);for(const value of data)assert.ok(Number.isFinite(value),'A non-finite vertex reached WebGL');};
+  gl.bufferData=(_,data)=>{assert.equal(data.length%11,0);for(const value of data)assert.ok(Number.isFinite(value),'A non-finite vertex reached WebGL');for(let i=10;i<data.length;i+=11)assert.ok(data[i]>=0&&data[i]<=1,'Vertex opacity is bounded');};
   gl.drawArrays=(_,__,count)=>{gl.draws++;gl.vertices=count;assert.ok(count>100);};
   const canvas=document.querySelector('#world');Object.assign(canvas,{clientWidth:width,clientHeight:height,getContext:()=>gl,getBoundingClientRect:()=>({left:0,top:0})});
-  let world,renderer,scheduled,now=1000;
+  let world,renderer,scheduled,sound,now=1000;
   class World extends simulation.World{constructor(){super(()=>.4);world=this;}}
-  class Renderer extends graphics.Renderer{constructor(c){super(c);renderer=this;}}
-  const context=vm.createContext({document,window,console,LittleWorld3D:{...simulation,World},Wonder3D:{...graphics,Renderer},requestAnimationFrame:fn=>{scheduled=fn;}});
+  class Renderer extends graphics.Renderer{
+    constructor(c){super(c);renderer=this;this.calls=[];}
+    begin(){super.begin();this.calls=[];}
+    mesh(name,position,scale,hex,rotation,glow,opacity=1){
+      if(capture)this.calls.push({name,position,scale,hex,rotation,opacity});
+      super.mesh(name,position,scale,hex,rotation,glow,opacity);
+    }
+  }
+  const context=vm.createContext({document,window,console,AudioContext:audio?AudioContext:undefined,localStorage:{getItem:()=>String(muted),setItem(){}},LittleWorld3D:{...simulation,World},Wonder3D:{...graphics,Renderer},requestAnimationFrame:fn=>{scheduled=fn;}});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../audio.js'),'utf8'),context,{filename:'audio.js'});
+  const BaseSoundtrack=context.WonderAudio.Soundtrack;
+  context.WonderAudio.Soundtrack=class extends BaseSoundtrack{constructor(options){super(options);sound=this;}};
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../world.js'),'utf8'),context,{filename:'world.js'});
   function frame(ms=100){now+=ms;const fn=scheduled;assert.ok(fn);scheduled=null;fn(now);}
   function drag(a,b){canvas.dispatch('pointerdown',{clientX:a.x,clientY:a.y});canvas.dispatch('pointermove',{clientX:b.x,clientY:b.y});canvas.dispatch('pointerup',{clientX:b.x,clientY:b.y});}
   const click=selector=>document.querySelector(selector).dispatch('click');
   const shape=id=>document.querySelectorAll('.shape').find(b=>Number(b.dataset.shape)===id).dispatch('click');
   const tool=kind=>document.querySelectorAll('[data-tool]').find(b=>b.dataset.tool===kind).dispatch('click');
-  return {world,renderer,canvas,gl,document,window,frame,drag,click,shape,tool};
+  return {world,renderer,canvas,gl,document,window,frame,drag,click,shape,tool,sound};
 }
 
 test('the actual application starts and submits all six 3D discoveries',()=>{
@@ -58,8 +70,93 @@ test('the actual application starts and submits all six 3D discoveries',()=>{
   for(let id=0;id<6;id++)assert.ok(app.world.place(id,{x:-8+id*3,y:0,z:0}));
   for(let i=0;i<40;i++)app.frame();
   assert.ok(app.world.tokens.every(t=>t.cycle===1));assert.ok(app.gl.vertices>15000);assert.equal(app.gl.draws,41);
+  for(let i=0;i<55;i++)app.frame(); // Exercise every discovery through its dissolve.
   app.click('#pause');const time=app.world.time;app.frame();app.frame();assert.equal(app.world.time,time);
   app.click('#pause');app.frame();assert.ok(app.world.time>time);
+});
+
+test('real reveal events trigger every tune, repeat, and obey the sound controls',()=>{
+  const a=boot(1440,900,{audio:true});a.frame();a.world.people=[];
+  assert.equal(a.sound.context,null,'Page load must not autoplay');
+  a.document.dispatch('pointerdown',{target:a.canvas});
+  assert.equal(a.sound.context.state,'running');
+  for(let id=0;id<6;id++)a.world.place(id,{x:-8+id*3,y:0,z:0});
+  for(let i=0;i<7;i++)a.frame();
+  assert.equal(a.sound.voices.size,6);
+  assert.equal(a.sound.buffers.size,6);
+  assert.ok(a.world.tokens.every(t=>t.cycle===1));
+  for(const token of a.world.tokens)token.timer=.01;
+  a.frame();assert.equal(a.sound.voices.size,12,'Each repeat also plays a tune');
+  a.click('#sound');assert.equal(a.sound.muted,true);assert.equal(a.sound.voices.size,0);
+  assert.equal(a.document.querySelector('#sound').getAttribute('aria-pressed'),'true');
+  for(const token of a.world.tokens)token.timer=.01;
+  a.frame();assert.equal(a.sound.voices.size,0,'Muted reveals stay silent');
+  a.window.dispatch('keydown',{key:'m'});assert.equal(a.sound.muted,false);
+  a.click('#pause');assert.equal(a.sound.context.state,'suspended');
+  a.document.hidden=true;a.document.dispatch('visibilitychange');
+  a.click('#pause');assert.equal(a.sound.context.state,'suspended','Resuming while hidden stays silent');
+  a.document.hidden=false;a.document.dispatch('visibilitychange');assert.equal(a.sound.context.state,'running');
+  for(const token of a.world.tokens)token.timer=.01;
+  a.frame();a.frame();assert.ok(a.sound.voices.size>0);
+  a.click('#undo');assert.equal(a.sound.voices.size,0);
+  a.sound.playDiscovery({id:0});a.click('#clear');assert.equal(a.sound.voices.size,0);
+});
+
+test('saved mute preference and unavailable audio preserve a playable world',()=>{
+  const saved=boot(1440,900,{audio:true,muted:true});
+  saved.document.dispatch('pointerdown',{target:saved.canvas});assert.equal(saved.sound.context,null);
+  saved.click('#pause');saved.click('#sound');assert.equal(saved.sound.context,null);
+  saved.click('#pause');assert.equal(saved.sound.context.state,'running','Unmute during pause starts music on resume');
+  const silent=boot();silent.frame();silent.window.dispatch('keydown',{key:'1'});
+  assert.equal(silent.document.querySelector('#sound').disabled,true);
+  silent.world.people=[];assert.ok(silent.world.place(0,{x:0,y:0,z:0}));
+  for(let i=0;i<7;i++)silent.frame();assert.equal(silent.world.tokens[0].cycle,1);
+});
+
+test('discoveries spring past full size, settle, and dissolve without contracting',()=>{
+  const a=boot(1440,900,{capture:true});a.frame();a.world.people=[];
+  a.world.place(0,{x:0,y:0,z:0});
+  const cloud=()=>a.renderer.calls.find(c=>c.name==='sphere'&&c.hex==='#a6d7df'&&c.scale[0]/c.scale[1]>1.5);
+  const sizes=[];
+  for(let i=0;i<17;i++){a.frame();const c=cloud();if(c)sizes.push(c.scale[0]);}
+  assert.ok(Math.max(...sizes)>.64*1.1,'The opening overshoots before settling');
+  const settled=cloud();assert.ok(settled);assert.ok(Math.abs(settled.scale[0]-.64)<.003);
+  assert.equal(settled.opacity,1);
+  for(let i=0;i<67;i++)a.frame();
+  const dissolving=cloud();assert.ok(dissolving);
+  assert.ok(dissolving.opacity>0&&dissolving.opacity<.5);
+  assert.ok(Math.abs(dissolving.scale[0]-settled.scale[0])<.003,'The ending preserves full geometry');
+  a.click('#pause');const opacity=dissolving.opacity;a.frame();assert.equal(cloud().opacity,opacity);
+});
+
+test('the visual pop waits for the scheduled audio beat',()=>{
+  const a=boot(1440,900,{audio:true,capture:true});a.frame();a.world.people=[];
+  a.document.dispatch('pointerdown',{target:a.canvas});
+  a.sound.context.currentTime=.63;
+  a.world.place(0,{x:0,y:0,z:0});
+  for(let i=0;i<7;i++)a.frame();
+  const cloud=()=>a.renderer.calls.some(c=>c.name==='sphere'&&c.hex==='#a6d7df'&&c.scale[0]/c.scale[1]>1.5);
+  assert.equal(cloud(),false,'The discovery stays hidden before its musical entrance');
+  const source=[...a.sound.voices.keys()][0];assert.ok(source.when>a.sound.context.currentTime);
+  a.sound.context.currentTime=source.when+.1;a.frame();
+  assert.equal(cloud(),true,'The pop begins on the same clock as the tune');
+});
+
+test('compact mystery meshes fit inside their collision bodies',()=>{
+  const a=boot(1440,900,{capture:true});a.frame();a.world.people=[];
+  const kinds=['sphere','pyramid','diamond','box','hex','crescent'];
+  for(let id=0;id<6;id++)a.world.place(id,{x:-8+id*3,y:0,z:0});
+  a.frame();
+  for(const token of a.world.tokens){
+    const draw=a.renderer.calls.find(c=>c.name===kinds[token.id]&&Math.abs(c.position[0]-token.x)<1e-8&&c.position[1]>.1);
+    assert.ok(draw);assert.ok(draw.scale.every(v=>v<.6),'The shapes stay smaller than the people');
+    const vertices=graphics.meshes[draw.name],yaw=draw.rotation.y,body=a.world.tokenBody(token);
+    for(let i=0;i<vertices.length;i+=6){
+      const x=vertices[i]*draw.scale[0],y=vertices[i+1]*draw.scale[1],z=vertices[i+2]*draw.scale[2];
+      const point={x:draw.position[0]+x*Math.cos(yaw)+z*Math.sin(yaw),y:draw.position[1]+y,z:draw.position[2]-x*Math.sin(yaw)+z*Math.cos(yaw),radius:.001,height:.002};
+      assert.ok(simulation.overlaps(point,body),`Shape ${token.id} extends outside its collision body`);
+    }
+  }
 });
 
 for(const [width,height]of[[1440,900],[390,844]])test(`placement, camera, drawing, and undo controls work at ${width}px`,()=>{
@@ -68,7 +165,7 @@ for(const [width,height]of[[1440,900],[390,844]])test(`placement, camera, drawin
   a.click('#rotate-right');assert.ok(camera.targetYaw>initial);a.frame();
   a.shape(3);const origin={x:-3,y:0,z:2},screen=camera.project(origin);a.drag(screen,screen);
   assert.equal(a.world.tokens.length,1);assert.ok(Math.hypot(a.world.tokens[0].x-origin.x,a.world.tokens[0].z-origin.z)<1e-9);
-  a.tool('move');const from=camera.project({...origin,y:.72}),dest=camera.project({x:3,y:0,z:-2}),startFloor=camera.project(origin);
+  a.tool('move');const from=camera.project({...origin,y:.45}),dest=camera.project({x:3,y:0,z:-2}),startFloor=camera.project(origin);
   const delta={x:dest.x-startFloor.x,y:dest.y-startFloor.y};a.drag(from,{x:from.x+delta.x,y:from.y+delta.y});
   assert.ok(Math.hypot(a.world.tokens[0].x-3,a.world.tokens[0].z+2)<1e-9);
   a.click('#undo');assert.ok(Math.abs(a.world.tokens[0].x+3)<1e-9);

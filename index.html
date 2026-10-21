@@ -13,6 +13,7 @@
   <header>
     <div class="wordmark">little wonders<span>A WORLD IN THREE DIMENSIONS</span></div>
     <div class="header-actions">
+      <button id="sound" aria-pressed="false" aria-label="Mute sound" title="Mute music and discovery tunes · M"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-slash" d="m15 9 6 6m0-6-6 6"/></svg></button>
       <button id="help" aria-label="Show instructions" aria-expanded="false" title="How to play">?</button>
       <button id="pause" aria-pressed="false" aria-label="Pause animation" title="Pause · Space">Ⅱ</button>
     </div>
@@ -56,7 +57,8 @@
     <p>Use the arrow to move a shape. Drag empty space to orbit, or use the rotation buttons. Scroll to zoom.</p>
     <p>Draw paths and springs across the stage. Raise the building height to make elevated paths. Draw a ladder from its lower end to a raised path; it rises to the selected height.</p>
     <p>Little people give each other space, wait on ladders, and find their own way. Shapes cannot be placed on them.</p>
-    <p class="keys">1–6 shapes · V move · L path · H ladder · B bounce<br>← → rotate · R auto rotate · [ ] height · Space pause<br>Esc cancel · Ctrl / ⌘ Z undo</p>
+    <p>A gentle soundtrack begins when you interact. Each discovery joins the music with its own little tune. Use the speaker button or M to mute; pause also pauses the music.</p>
+    <p class="keys">1–6 shapes · V move · L path · H ladder · B bounce<br>← → rotate · R auto rotate · [ ] height · Space pause<br>M sound · Esc cancel · Ctrl / ⌘ Z undo</p>
     <button id="close-help">Let’s explore <span aria-hidden="true">↗</span></button>
   </section>
   <p id="status" class="sr-only" role="status" aria-live="polite"></p>
@@ -64,6 +66,7 @@
 </main>
 <script src="simulation.js"></script>
 <script src="renderer.js"></script>
+<script src="audio.js"></script>
 <script src="world.js"></script>
 </body>
 </html>
