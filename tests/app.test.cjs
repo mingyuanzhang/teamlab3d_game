@@ -7,6 +7,7 @@ const path=require('node:path');
 const simulation=require('../simulation.js');
 const graphics=require('../renderer.js');
 const {AudioContext}=require('./helpers/audio.cjs');
+const {THEMES}=require('../audio.js');
 
 class Element {
   constructor(attrs=''){
@@ -114,7 +115,7 @@ test('saved mute preference and unavailable audio preserve a playable world',()=
   for(let i=0;i<7;i++)silent.frame();assert.equal(silent.world.tokens[0].cycle,1);
 });
 
-for(const theme of ['jazz','rock','classical'])test(`the ${theme} selector updates all six existing objects and future placements together`,()=>{
+for(const theme of Object.keys(THEMES).filter(theme=>theme!=='default'))test(`the ${theme} selector updates all six existing objects and future placements together`,()=>{
   const a=boot(1440,900,{audio:true});a.frame();a.world.people=[];a.document.dispatch('pointerdown',{target:a.canvas});
   for(let id=0;id<6;id++)a.world.place(id,{x:-8+id*3,y:0,z:0});
   for(let i=0;i<7;i++)a.frame();
@@ -133,7 +134,7 @@ for(const theme of ['jazz','rock','classical'])test(`the ${theme} selector updat
   a.click('#pause');assert.equal(a.sound.theme,'default');assert.equal(a.sound.context.state,'running');
 });
 
-for(const theme of ['jazz','rock','classical'])test(`saved ${theme} selection loads quietly and the selector keeps keyboard focus out of the game`,()=>{
+for(const theme of Object.keys(THEMES).filter(theme=>theme!=='default'))test(`saved ${theme} selection loads quietly and the selector keeps keyboard focus out of the game`,()=>{
   const a=boot(390,844,{audio:true,muted:true,theme}),select=a.document.querySelector('#music-theme');
   assert.equal(select.value,theme);assert.equal(a.sound.context,null);
   const yaw=a.renderer.camera.targetYaw;a.window.dispatch('keydown',{target:select,key:'ArrowRight'});
