@@ -1,10 +1,10 @@
-/* Local instruments and score-based piano arrangements; no audio downloads. */
+/* Wonder Audio · local instruments and score-based arrangements. See NOTICE.md for score attribution. */
 (function(root,factory){
   if(typeof module==='object'&&module.exports)module.exports=factory(root);
   else root.WonderAudio=factory(root);
 })(typeof globalThis!=='undefined'?globalThis:this,root=>{
   'use strict';
-  const TAU=Math.PI*2,BEAT=60/84,STORAGE_KEY='little-wonders-muted',THEME_KEY='little-wonders-music-theme';
+  const TAU=Math.PI*2,BEAT=60/84;
   const CHORDS=[[48,55,60,64,71],[45,52,57,60,67],[41,48,53,57,64],[43,50,55,59,64]];
   const JAZZ_CHORDS=[
     [38,45,50,53,60,64],[31,38,43,47,53,57,64],[36,43,48,52,59,62],[33,40,45,48,55,59],
@@ -453,14 +453,16 @@
   }
 
   class Soundtrack {
-    constructor({onChange=()=>{}}={}){
-      this.Context=root.AudioContext||root.webkitAudioContext;
+    constructor({onChange=()=>{},AudioContext:Context=root.AudioContext||root.webkitAudioContext,
+      storage,storageKey='little-wonders-muted',themeKey='little-wonders-music-theme'}={}){
+      this.Context=Context;this.storageKey=storageKey;this.themeKey=themeKey;
       this.supported=!!this.Context;this.onChange=onChange;
       this.context=null;this.muted=false;this.paused=false;this.hidden=false;this.theme='default';
       this.voices=new Map();this.buffers=new Map();this.musicBuffers=new Map();
       try{
-        this.muted=root.localStorage?.getItem(STORAGE_KEY)==='true';
-        const saved=root.localStorage?.getItem(THEME_KEY);if(Object.hasOwn(THEMES,saved))this.theme=saved;
+        this.storage=storage===undefined?root.localStorage:storage;
+        this.muted=this.storage?.getItem(this.storageKey)==='true';
+        const saved=this.storage?.getItem(this.themeKey);if(Object.hasOwn(THEMES,saved))this.theme=saved;
       }catch{}
       this.beatLength=60/themeFor(this.theme).bpm;
     }
@@ -501,7 +503,7 @@
         try{this.musicBuffers.set(theme,makeMusic(this.context,theme));}catch{return false;}
       }
       this.clearEffects();this.buffers.clear();this.theme=theme;this.beatLength=60/themeFor(theme).bpm;
-      try{root.localStorage?.setItem(THEME_KEY,theme);}catch{}
+      try{this.storage?.setItem(this.themeKey,theme);}catch{}
       if(this.context)this.startMusic(true);
       this.unlock();this.sync();this.onChange();return true;
     }
@@ -527,7 +529,7 @@
     }
     setMuted(muted){
       this.muted=!!muted;
-      try{root.localStorage?.setItem(STORAGE_KEY,String(this.muted));}catch{}
+      try{this.storage?.setItem(this.storageKey,String(this.muted));}catch{}
       if(this.muted)this.clearEffects();else this.unlock();
       this.sync();this.onChange();
     }
@@ -575,6 +577,13 @@
       source.stop(now+.04);this.voices.delete(source);
     }
     clearEffects(){for(const source of this.voices.keys())this.stopVoice(source);}
+    async dispose(){
+      this.supported=false;this.paused=true;this.clearEffects();
+      if(this.music)this.music.stop();
+      const context=this.context;this.context=null;this.music=null;
+      this.buffers.clear();this.musicBuffers.clear();
+      if(context&&context.state!=='closed')await context.close();
+    }
   }
   return {Soundtrack,makeMusic,makeTune,discoveryScore,composerScore,grooveBeat,straightBeat,BEAT,CHORDS,THEMES};
 });

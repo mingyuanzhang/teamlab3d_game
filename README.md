@@ -9,7 +9,7 @@ cd team_lab3d
 python3 -m http.server 8000
 ```
 
-Visit http://localhost:8000. Everything is local: no package installation, build, CDN, fonts, models, or network connection is needed. The original `team_lab` is untouched.
+Visit http://localhost:8000. Everything is local: no package installation, build, CDN, fonts, models, or network connection is needed. The 2D `team_lab` and this version share the standalone Wonder Audio music library.
 
 ## Play
 
@@ -31,7 +31,7 @@ Bach's accompaniment reduces the opening four bars of [Prelude in C major, BWV 8
 
 The six discoveries use original, quieter piano phrases composed to fit those backgrounds: falling droplets, a quick rising flare, floating ascents, a little bloom, weaving arpeggios, and an orbiting answer. Bach uses light, articulated figures; Chopin uses softer triplet figures on the Nocturne's pulse. Each object cycles through three variations in its answering notes, cadence timing, and touch; different copies can play different variations. The opening gesture keeps its identity. Every phrase follows the active harmony, including Chopin's chord changes inside a bar. Common tones can sustain across a change; other notes release ahead of it. Chopin discoveries enter on full beats so their subdivisions align with the accompaniment. All parts use piano hammer attacks, decaying string partials, and damped releases.
 
-The Nocturne background notation in `audio.js` adapts Renato Biolcati Rinaldi's Mutopia transcription under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); the adapted notation is shared under that license. The Prelude edition by Tobias Erbsland is marked public domain. The discovery phrases are original compositions. No recordings, score downloads, or third-party audio services are used at runtime.
+The Nocturne background notation in `vendor/wonder-audio/audio.js` adapts Renato Biolcati Rinaldi's Mutopia transcription under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); the adapted notation is shared under that license. The Prelude edition by Tobias Erbsland is marked public domain. The discovery phrases are original compositions. No recordings, score downloads, or third-party audio services are used at runtime. Full attribution is distributed in [NOTICE.md](vendor/wonder-audio/NOTICE.md).
 
 ## People and spacing
 
@@ -44,13 +44,15 @@ People avoid placed shapes, and placement or movement over a person's body is re
 - `simulation.js`: browser-independent movement, collision volumes, inventory, history, and clocks.
 - `renderer.js`: local WebGL mesh renderer, curved petals, twisting ribbon surfaces, lighting, depth buffer, and orbit camera.
 - `world.js`: scene, six 3D effects, placement, tools, and camera input.
-- `audio.js`: six music themes (Default, Jazz, Rock, Classical, Bach, and Chopin), shared chord and rhythm timing, and six theme-aware discovery tunes using Web Audio; no audio assets or dependencies. Browsers without Web Audio can still play silently.
+- `vendor/wonder-audio/`: generated local distribution of the standalone `wonder-audio` package, with six music themes (Default, Jazz, Rock, Classical, Bach, and Chopin), shared chord and rhythm timing, and six theme-aware discovery tunes using Web Audio. Its manifest records the package version and SHA-256 hashes. Browsers without Web Audio can still play silently.
 - `index.html` and `style.css`: responsive controls and instructions.
 
 ```sh
 node --test team_lab3d/tests/*.test.cjs
 ```
 
-Run that command from the parent directory (or `node --test tests/*.test.cjs` here). Tests cover collision-free spawning, approaching walkers, swept collisions, falling bodies, ladder queues, gravity, elevated supports, springs, shape avoidance, inventory, repeating discoveries, move/undo, invalid inputs, camera picking at desktop and phone dimensions, and ten simulated minutes with two deterministic populations. Audio checks cover audible, distinct waveforms, loop continuity, chord changes, beat synchronization, overlapping tunes, mute persistence, pause and visibility, and browser or storage restrictions. A separate DOM/WebGL harness checks application startup, geometry submission, input, and all six effects, including pop overshoot, settling, and full-size dissolves; it does not replace visual testing in a real browser.
+Run that command from the parent directory (or `node --test tests/*.test.cjs` here). Tests cover collision-free spawning, approaching walkers, swept collisions, falling bodies, ladder queues, gravity, elevated supports, springs, shape avoidance, inventory, repeating discoveries, move/undo, invalid inputs, camera picking at desktop and phone dimensions, and ten simulated minutes with two deterministic populations. The original audio synthesis and scheduling tests now live in the standalone package: run `npm test` in `../wonder-audio`. They cover audible, distinct waveforms, loop continuity, chord changes, beat synchronization, overlapping tunes, mute persistence, pause and visibility, and browser or storage restrictions. The DOM/WebGL harness here checks application startup, geometry submission, input, all six themes, and all six effects, including pop overshoot, settling, and full-size dissolves; it does not replace visual testing in a real browser.
+
+Edit music in `../wonder-audio/audio.js`, then run `npm run vendor` in that package to refresh both games' committed distributions and asset hashes. `npm run vendor:check` verifies them without writing. The game itself needs no sibling checkout at runtime. Keep the generated audio, score notice, manifest, and updated HTML together in each game's commit.
 
 For GitHub Pages releases, update each changed CSS or JavaScript file's `?v=` value in `index.html` to the first 12 characters of its SHA-256 hash, so returning visitors load the matching styles and scripts.

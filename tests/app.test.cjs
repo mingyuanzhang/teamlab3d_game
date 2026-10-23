@@ -7,7 +7,7 @@ const path=require('node:path');
 const simulation=require('../simulation.js');
 const graphics=require('../renderer.js');
 const {AudioContext}=require('./helpers/audio.cjs');
-const {THEMES}=require('../audio.js');
+const {THEMES}=require('../vendor/wonder-audio/audio.js');
 
 class Element {
   constructor(attrs=''){
@@ -54,7 +54,7 @@ function boot(width=1440,height=900,{audio=false,muted=false,capture=false,theme
   }
   const storage=new Map([['little-wonders-muted',String(muted)],['little-wonders-music-theme',theme]]);
   const context=vm.createContext({document,window,console,AudioContext:audio?AudioContext:undefined,localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},LittleWorld3D:{...simulation,World},Wonder3D:{...graphics,Renderer},requestAnimationFrame:fn=>{scheduled=fn;}});
-  vm.runInContext(fs.readFileSync(path.join(__dirname,'../audio.js'),'utf8'),context,{filename:'audio.js'});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../vendor/wonder-audio/audio.js'),'utf8'),context,{filename:'audio.js'});
   const BaseSoundtrack=context.WonderAudio.Soundtrack;
   context.WonderAudio.Soundtrack=class extends BaseSoundtrack{constructor(options){super(options);sound=this;}};
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../world.js'),'utf8'),context,{filename:'world.js'});
