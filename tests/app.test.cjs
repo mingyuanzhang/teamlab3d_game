@@ -88,7 +88,8 @@ test('real reveal events trigger every tune, repeat, and obey the sound controls
   assert.equal(a.sound.buffers.size,6);
   assert.ok(a.world.tokens.every(t=>t.cycle===1));
   for(const token of a.world.tokens)token.timer=.01;
-  a.frame();assert.equal(a.sound.voices.size,12,'Each repeat also plays a tune');
+  a.frame();assert.equal(a.sound.voices.size,9,'Repeated entrances share accents while foreground phrases finish');
+  assert.equal([...a.sound.voiceInfo.values()].filter(info=>info.role==='phrase').length,3);
   a.click('#sound');assert.equal(a.sound.muted,true);assert.equal(a.sound.voices.size,0);
   assert.equal(a.document.querySelector('#sound').getAttribute('aria-pressed'),'true');
   for(const token of a.world.tokens)token.timer=.01;
