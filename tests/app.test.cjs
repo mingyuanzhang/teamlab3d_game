@@ -7,7 +7,7 @@ const path=require('node:path');
 const simulation=require('../simulation.js');
 const graphics=require('../renderer.js');
 const {AudioContext}=require('./helpers/audio.cjs');
-const {THEMES}=require('../vendor/wonder-audio/audio.js');
+const {PLAYABLE_THEMES}=require('../vendor/wonder-audio/audio.js');
 
 class Element {
   constructor(attrs=''){
@@ -116,7 +116,7 @@ test('saved mute preference and unavailable audio preserve a playable world',()=
   for(let i=0;i<7;i++)silent.frame();assert.equal(silent.world.tokens[0].cycle,1);
 });
 
-for(const theme of Object.keys(THEMES).filter(theme=>theme!=='default'))test(`the ${theme} selector updates all six existing objects and future placements together`,()=>{
+for(const theme of PLAYABLE_THEMES.filter(theme=>theme!=='default'))test(`the ${theme} selector updates all six existing objects and future placements together`,()=>{
   const a=boot(1440,900,{audio:true});a.frame();a.world.people=[];a.document.dispatch('pointerdown',{target:a.canvas});
   for(let id=0;id<6;id++)a.world.place(id,{x:-8+id*3,y:0,z:0});
   for(let i=0;i<7;i++)a.frame();
@@ -135,7 +135,7 @@ for(const theme of Object.keys(THEMES).filter(theme=>theme!=='default'))test(`th
   a.click('#pause');assert.equal(a.sound.theme,'default');assert.equal(a.sound.context.state,'running');
 });
 
-for(const theme of Object.keys(THEMES).filter(theme=>theme!=='default'))test(`saved ${theme} selection loads quietly and the selector keeps keyboard focus out of the game`,()=>{
+for(const theme of PLAYABLE_THEMES.filter(theme=>theme!=='default'))test(`saved ${theme} selection loads quietly and the selector keeps keyboard focus out of the game`,()=>{
   const a=boot(390,844,{audio:true,muted:true,theme}),select=a.document.querySelector('#music-theme');
   assert.equal(select.value,theme);assert.equal(a.sound.context,null);
   const yaw=a.renderer.camera.targetYaw;a.window.dispatch('keydown',{target:select,key:'ArrowRight'});
@@ -208,4 +208,16 @@ for(const [width,height]of[[1440,900],[390,844]])test(`placement, camera, drawin
   a.click('#zoom-in');assert.ok(camera.zoom<1);a.click('#home');assert.equal(camera.auto,false);assert.equal(camera.zoom,1);
   a.click('#help');assert.equal(a.document.querySelector('#instructions').hidden,false);a.click('#close-help');assert.equal(a.document.querySelector('#instructions').hidden,true);
   a.click('#clear');assert.equal(a.world.tokens.length,0);assert.equal(a.world.lines.length,5);assert.equal(a.world.people.length,48);
+});
+
+
+test('approved themes match the selector and archived or removed saved choices fall back quietly',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+  const choices=[...html.matchAll(/<option value="([^"]+)">/g)].map(m=>m[1]);
+  assert.deepEqual(choices,PLAYABLE_THEMES);
+  for(const theme of['jazz','rock','classical','british','guzheng','paganini']){
+    const a=boot(390,844,{audio:true,theme});
+    assert.equal(a.sound.theme,'default');assert.equal(a.sound.context,null);
+    assert.equal(a.sound.setTheme(theme),false);
+  }
 });

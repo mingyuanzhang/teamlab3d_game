@@ -12,7 +12,7 @@
   const skins=['#d9b99a','#a87959','#e7cdb4'];
   const levels=[0,2.4,3.8,5.2];
   let selected=null,tool='move',level=0,paused=false,last=0,accumulator=0,gesture=null,pointer=null,effects=[];
-  const soundButton=$('#sound'),themeSelect=$('#music-theme'),sound=new WonderAudio.Soundtrack({onChange:syncSound});
+  const soundButton=$('#sound'),themeSelect=$('#music-theme'),sound=new WonderAudio.Soundtrack({onChange:syncSound,themeIds:WonderAudio.PLAYABLE_THEMES});
   function syncSound(){
     soundButton.disabled=!sound.supported;soundButton.setAttribute('aria-pressed',String(sound.muted));
     const label=!sound.supported?'Audio unavailable in this browser':sound.muted?'Unmute sound':'Mute sound';
